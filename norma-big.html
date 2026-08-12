@@ -59,13 +59,29 @@
   /* червоні стрілки під підписами */
   .arw path{stroke:#ff2d2d;fill:none;stroke-width:16;stroke-linecap:round;stroke-linejoin:round}
   .arw path.head{fill:#ff2d2d}
-  /* ТИ спить маленьким і без стрілки, поки лінія до нього не дійшла */
-  #you{transform-box:view-box;transform-origin:1500px 200px;transform:scale(.4);
+
+  /* підпис спить маленьким і без стрілки, поки лінія до нього не дійшла.
+     transform-origin — у точці самого підпису, тому він росте на місці,
+     а не з'їжджає вбік */
+  .lbl{transform-box:view-box;transform:scale(.4);
        transition:transform .5s cubic-bezier(.2,1.4,.4,1)}
-  #you .arw{opacity:0;transition:opacity .3s}
-  #you.big{transform:scale(1)}
-  #you.big .arw{opacity:1}
-  @media (prefers-reduced-motion:reduce){ #you{transition-duration:.25s} }
+  #me{transform-origin:500px 200px}
+  #you{transform-origin:1500px 200px}
+  .lbl.big{transform:scale(1)}
+  /* стрілка пульсує від точки під підписом, щоб «дихала» вниз, на графік */
+  .lbl .arw{transform-box:view-box;opacity:0;transition:opacity .3s;--a:1}
+  #me .arw{transform-origin:500px 255px}
+  #you .arw{transform-origin:1500px 255px}
+  .lbl.big .arw{opacity:1;animation:pulse .9s ease-in-out infinite}
+  @keyframes pulse{
+    0%,100%{transform:scale(1)}
+    50%    {transform:scale(calc(1 + .16 * var(--a)))}
+  }
+  @media (prefers-reduced-motion:reduce){
+    .lbl{transition-duration:.25s}
+    .lbl .arw{--a:.4}
+    .lbl.big .arw{animation-duration:1.8s}
+  }
 
   .bar{position:relative;width:100%;max-width:1100px}
   .tip{
@@ -148,16 +164,18 @@
 
   <line x1="30" y1="490" x2="1975" y2="490" stroke="#fff" stroke-width="11" stroke-linecap="round"/>
   <g fill="#fff" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif" font-weight="800" text-anchor="middle">
-    <text x="500" y="200" font-size="150">Я</text>
-    <g class="arw">
-      <path d="M500,262 L500,398"/>
-      <path class="head" d="M466,380 L500,442 L534,380 Z"/>
+    <!-- Кожен підпис росте лише коли лінія дійшла під нього: масштаб і стрілка
+         вмикаються класом .big, який ставить render() за реально домальованим
+         X, а не за «сирим» значенням повзунка -->
+    <g id="me" class="lbl">
+      <text x="500" y="200" font-size="150">Я</text>
+      <g class="arw">
+        <path d="M500,262 L500,398"/>
+        <path class="head" d="M466,380 L500,442 L534,380 Z"/>
+      </g>
     </g>
 
-    <!-- ТИ росте лише коли повзунок дійшов до нього: масштаб і стрілка
-         вмикаються класом .big, який ставить render() за реально
-         домальованим X, а не за «сирим» значенням повзунка -->
-    <g id="you">
+    <g id="you" class="lbl">
       <text x="1500" y="200" font-size="150">ТИ</text>
       <g class="arw">
         <path d="M1500,262 L1500,398"/>
@@ -263,8 +281,9 @@ const SANE = SEGS.length === 5
 /* ---- рендер ---- */
 const scrub = document.getElementById('scrub');
 const tip = document.getElementById('tip');
+const me = document.getElementById('me');
 const you = document.getElementById('you');
-const YOU_X = 1500;                    // X підпису «ТИ» у координатах viewBox
+const ME_X = 500, YOU_X = 1500;        // X підписів у координатах viewBox
 
 // показуємо перші `len` пікселів шматка; пропуск трохи довший за сам шматок
 // нульовий штрих із round-cap малює крапку — тому ховаємо шматок повністю
@@ -282,7 +301,8 @@ function showAll(){
     el.style.strokeDasharray = 'none';
   }
   for(const s of SEGS) if(s.cls) s.g.classList.add('on');
-  you.classList.add('big');            // без вимірювань ТИ просто одразу велике
+  me.classList.add('big');             // без вимірювань підписи просто одразу великі
+  you.classList.add('big');
 }
 
 function render(){
@@ -290,7 +310,9 @@ function render(){
   const p = scrub.value / 1000;
 
   const lp = clamp01(p / SPLIT);
-  reveal(leftP, lenAtX(leftM, leftM.x0 + lp*(leftM.x1 - leftM.x0)), leftM.total);
+  const lx = leftM.x0 + lp*(leftM.x1 - leftM.x0);
+  reveal(leftP, lenAtX(leftM, lx), leftM.total);
+  me.classList.toggle('big', lx >= ME_X);
 
   const rp = clamp01((p - SPLIT) / (1 - SPLIT));
   let len = 0, revX = 0;               // найдальший домальований X праворуч
