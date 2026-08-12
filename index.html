@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Я / ТИ — норма</title>
+<style>
+  :root{ --green:#7d9440; --purple:#8f3a64; --line-left:#a03a67; --line-right:#86a04a; }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%}
+  body{
+    background:#111;color:#fff;
+    font:600 16px/1.2 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    display:flex;flex-direction:column;justify-content:center;align-items:center;gap:20px;
+    padding:16px calc(18px + env(safe-area-inset-left)) calc(24px + env(safe-area-inset-bottom));
+    overflow:hidden;
+  }
+  svg{width:100%;max-width:1100px;height:auto;display:block;border-radius:6px}
+  .chart{fill:none;stroke-linecap:round;stroke-linejoin:round}
+
+  /* кольори — правилами CSS, а не presentation-атрибутами: var() всередині
+     stroke="..." / fill="..." у WebKit історично не підставлявся, і тоді
+     stroke падає в none (лінія зникає), а fill — у чорний */
+  #bg-l{fill:var(--green)}
+  #bg-r{fill:var(--purple)}
+  #left{stroke:var(--line-left)}
+  #right{stroke:var(--line-right)}
+
+  /* анімації фігур — чистий CSS, без JS-таймерів: крутиться навколо точки,
+     якою фігура тримається за лінію, тому стик не роз'їжджається */
+  .cat, .skull{transform-box:view-box;--a:1}
+  .cat{transform-origin:1130px 344px}
+  .skull{transform-origin:1722px 662px}
+  .cat.on{animation:dance 1.1s ease-in-out infinite}
+  .skull.on{animation:shake .34s linear infinite}
+  @keyframes dance{
+    0%,100%{transform:rotate(0) translateY(0)}
+    25%    {transform:rotate(calc(var(--a) *  5deg)) translateY(calc(var(--a) * -7px))}
+    50%    {transform:rotate(0) translateY(0)}
+    75%    {transform:rotate(calc(var(--a) * -5deg)) translateY(calc(var(--a) * -7px))}
+  }
+  @keyframes shake{
+    0%,100%{transform:translate(0,0) rotate(0)}
+    20%{transform:translate(calc(var(--a) *  4px),calc(var(--a) * 2px)) rotate(calc(var(--a) *  1.2deg))}
+    40%{transform:translate(calc(var(--a) * -4px),0)                    rotate(calc(var(--a) * -1.2deg))}
+    60%{transform:translate(calc(var(--a) *  3px),calc(var(--a) * 3px)) rotate(calc(var(--a) *   .8deg))}
+    80%{transform:translate(calc(var(--a) * -3px),calc(var(--a) * 1px)) rotate(calc(var(--a) *  -.8deg))}
+  }
+  /* «Зменшення руху» на iOS більше не вбиває анімацію — лише приглушує
+     амплітуду. Раніше тут стояло animation:none, і при увімкненому
+     «Reduce Motion» фігури просто стояли, що читається як «не працює». */
+  @media (prefers-reduced-motion:reduce){
+    .cat, .skull{--a:.4}
+    .cat.on{animation-duration:2s}
+    .skull.on{animation-duration:.7s}
+  }
+
+  .bar{position:relative;width:100%;max-width:1100px}
+  .tip{
+    position:absolute;bottom:calc(100% + 8px);transform:translateX(-50%);
+    background:#fff;color:#111;font-size:14px;white-space:nowrap;
+    padding:7px 12px;border-radius:8px;pointer-events:none;
+    opacity:0;transition:opacity .25s;
+  }
+  .tip::after{
+    content:'';position:absolute;top:100%;left:50%;margin-left:-6px;
+    border:6px solid transparent;border-top-color:#fff;
+  }
+  .tip.show{opacity:1}
+  .diag{
+    font:600 13px/1.45 ui-monospace,SFMono-Regular,Menlo,monospace;
+    color:#e5b3c6;text-align:center;max-width:560px;white-space:pre-line;
+  }
+  .diag.ok{color:#6b6b6b;font-weight:400}
+  input[type=range]{
+    width:100%;max-width:1100px;-webkit-appearance:none;appearance:none;
+    background:transparent;height:52px;margin:0;
+  }
+  input[type=range]::-webkit-slider-runnable-track{height:6px;border-radius:3px;background:#3a3a3a}
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none;width:36px;height:36px;border-radius:18px;background:#fff;margin-top:-15px;
+  }
+  input[type=range]::-moz-range-track{height:6px;border-radius:3px;background:#3a3a3a}
+  input[type=range]::-moz-range-thumb{width:36px;height:36px;border:0;border-radius:18px;background:#fff}
+</style>
+</head>
+<body>
+
+<svg viewBox="0 0 2000 1000" preserveAspectRatio="xMidYMid meet" aria-label="Я / ТИ — норма">
+  <rect id="bg-l" x="0" y="0" width="1000" height="1000"/>
+  <rect id="bg-r" x="1000" y="0" width="1000" height="1000"/>
+
+  <path id="left" class="chart" stroke-width="15"
+    d="M50,515 L120,512 L165,528 L200,522 L235,545 L258,530 L300,535 L340,532 L385,600 L410,612 L440,650 L470,700 L500,748 L545,762 L575,742 L600,660 L625,540 L648,405 L668,455 L700,520 L740,545 L790,600 L820,655 L840,650 L855,545 L880,512 L975,514"/>
+
+  <!-- одна лінія: графік → котик → графік → череп → графік (шматки додає скрипт) -->
+  <!-- Одна суцільна лінія: графік → котик → графік → череп → графік.
+       Геометрія лежить тут, у розмітці, а не в скрипті: якщо JS не запуститься,
+       картинка все одно намалюється повністю, а котик і череп будуть рухатись
+       (класи cat/skull одразу з "on" — скрипт їх знімає, поки не домальовано).
+       SVG рахує dash окремо для кожного підшляху (M...), тому кожен підшлях —
+       окремий <path>. Стики збігаються точка в точку, шва не видно.
+       Порядок цих вузлів = порядок розкриття. Не переставляти. -->
+  <g id="right" class="chart" stroke-width="11">
+    <path d="M1000,490 L1080,490 L1084,466 L1120,466 L1126,344 L1130,344"/>
+
+    <g class="cat on">
+      <path d="M1130,344 C1126,320 1128,302 1130,288 C1116,282 1106,266 1104,248 C1102,240 1104,236 1114,232
+               C1094,246 1070,258 1054,262 C1036,266 1032,240 1048,232 C1070,220 1094,204 1110,190
+               C1112,184 1112,180 1114,176 C1108,148 1108,86 1120,60 L1112,26 L1154,52
+               C1170,42 1200,42 1214,52 L1254,26 L1248,60 C1258,86 1258,148 1250,176
+               C1272,158 1290,134 1296,112 C1304,94 1326,106 1320,124 C1306,146 1284,178 1268,214
+               C1266,226 1270,238 1270,250 C1268,270 1262,286 1252,292 C1254,314 1252,330 1252,344
+               L1214,344 C1212,326 1214,308 1210,296 C1196,284 1182,284 1168,296
+               C1166,312 1168,328 1168,344 L1130,344 Z"/>
+      <path d="M1158,96 L1158,116"/>
+      <path d="M1208,96 L1208,116"/>
+      <path d="M1170,132 L1182,148 L1196,130"/>
+    </g>
+
+    <path d="M1130,344 L1288,344 L1293,384 L1300,962 L1330,956 L1336,232 L1420,236 L1426,150 L1441,155
+             L1447,300 L1470,300 L1476,600 L1500,596 L1506,290 L1520,290 L1526,610 L1545,606 L1551,270
+             L1565,270 L1571,600 L1590,600 L1596,150 L1610,155 L1616,640 L1650,640 L1656,662 L1668,662"/>
+
+    <g class="skull on">
+      <path d="M1668,662 C1634,692 1624,742 1638,778 C1644,794 1656,802 1670,804 L1670,810
+               C1668,842 1686,860 1712,862 L1732,862 C1758,860 1776,842 1774,810 L1774,804
+               C1788,802 1800,794 1806,778 C1820,742 1810,692 1776,662"/>
+      <path d="M1690,712 C1707,712 1714,724 1714,740 C1714,757 1707,768 1690,768 C1673,768 1666,757 1666,740 C1666,724 1673,712 1690,712 Z"/>
+      <path d="M1754,712 C1771,712 1778,724 1778,740 C1778,757 1771,768 1754,768 C1737,768 1730,757 1730,740 C1730,724 1737,712 1754,712 Z"/>
+      <path d="M1722,778 L1711,798 L1733,798 Z"/>
+    </g>
+
+    <path d="M1776,662 L1800,662 L1806,300 L1811,90 L1826,95 L1832,645 L1900,645 L1906,662 L1970,662"/>
+  </g>
+
+  <line x1="30" y1="490" x2="1975" y2="490" stroke="#fff" stroke-width="11" stroke-linecap="round"/>
+  <g fill="#fff" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif" font-weight="800" text-anchor="middle">
+    <text x="500" y="105" font-size="58">Я</text>
+    <text x="1500" y="105" font-size="58">ТИ</text>
+    <text x="1015" y="450" font-size="72">норма</text>
+  </g>
+</svg>
+
+<div class="bar">
+  <div class="tip" id="tip">тягни повзунок →</div>
+  <input id="scrub" type="range" min="0" max="1000" value="0" step="1" aria-label="Прогрес">
+</div>
+
+<!-- Самозвіт. Текст лежить у розмітці, а не малюється скриптом: якщо JS не
+     виконався, він таким і лишиться — і це відразу видно на екрані.
+     Коли скрипт працює, він цей рядок перезаписує фактами. -->
+<div class="diag" id="diag">JS НЕ ВИКОНАВСЯ — картинка не оживе.
+Відкрий файл у Chrome: «Поділитися → Відкрити в Chrome».</div>
+
+<script>
+const SPLIT = 0.4;                 // 0–40% ліва панель, далі права
+const clamp01 = v => v < 0 ? 0 : v > 1 ? 1 : v;
+
+/* ---- вимірювання: розкриття по X для графіка (щоб скачки були миттєві) ----
+   Міряємо самі вузли розмітки. Ніяких тимчасових <path>, яким перезаписують d
+   і тут же питають довжину: саме на цьому патерні движок може віддати
+   закешоване значення. Заодно геометрія має одне джерело правди — розмітку. */
+function measure(el){
+  const total = el.getTotalLength(), N = 400, xs = [], ls = [];
+  for(let i = 0; i <= N; i++){
+    const l = total * i / N;
+    xs.push(el.getPointAtLength(l).x); ls.push(l);
+  }
+  return { total, xs, ls, N, x0: xs[0], x1: xs[N] };
+}
+
+function lenAtX(m, x){
+  if(x <= m.xs[0]) return 0;
+  for(let i = 1; i <= m.N; i++){
+    if(m.xs[i] >= x){
+      const t = (x - m.xs[i-1]) / ((m.xs[i] - m.xs[i-1]) || 1);
+      return m.ls[i-1] + t * (m.ls[i] - m.ls[i-1]);
+    }
+  }
+  return m.total;
+}
+
+/* ---- відрізки беремо з розмітки: <path> = ділянка графіка, <g> = фігура.
+   Порядок розкриття = порядок вузлів у документі, тобто той самий, яким
+   браузер малює лінію. Нічого синхронізувати вручну не треба. ---- */
+const rightG = document.getElementById('right');
+let cum = 0;
+const SEGS = [...rightG.children].map(node => {
+  const fig = node.tagName === 'g';
+  const s = {
+    kind: fig ? 'fig' : 'x',
+    cls: fig ? node.getAttribute('class').split(' ')[0] : null,
+    g: fig ? node : rightG,
+    parts: (fig ? [...node.children] : [node]).map(el => {
+      const part = { el, len: el.getTotalLength(), start: cum };
+      cum += part.len;
+      return part;
+    }),
+  };
+  // для ділянок графіка потрібна карта «X → довжина», для фігур — лише сума
+  s.m = fig
+    ? { total: s.parts.reduce((a, q) => a + q.len, 0) }
+    : measure(node);
+  return s;
+});
+
+const leftP = document.getElementById('left');
+const leftM = measure(leftP);
+
+// частка прогресу: 82% графіку (пропорційно X), по 9% на фігуру
+const FIG_SHARE = 0.09;
+const xTotal = SEGS.filter(s => s.kind === 'x').reduce((a,s) => a + (s.m.x1 - s.m.x0), 0);
+let acc = 0;
+for(const s of SEGS){
+  s.share = s.kind === 'fig' ? FIG_SHARE : (1 - 2*FIG_SHARE) * (s.m.x1 - s.m.x0) / xTotal;
+  s.p0 = acc; acc += s.share;
+}
+console.assert(Math.abs(acc - 1) < 1e-6, 'shares must sum to 1');
+console.assert(Math.abs(cum - SEGS.reduce((a,s) => a + s.m.total, 0)) < 1,
+  'parts must add up to the whole line');
+console.assert(SEGS.length === 5 && SEGS.filter(s => s.kind === 'x').every(s => s.parts.length === 1),
+  'markup must give 5 segments, chart ones single-subpath');
+
+// Якщо движок віддав кривi довжини, всі частки стають 0/NaN і тоді КОЖЕН
+// шматок ховається назавжди — екран лишається порожнім, і не зрозуміло чому.
+// Краще показати всю лінію відразу, ніж нічого.
+const SANE = SEGS.length === 5
+  && Number.isFinite(leftM.total) && leftM.total > 0
+  && Number.isFinite(cum) && cum > 0
+  && Number.isFinite(xTotal) && xTotal > 0
+  && SEGS.every(s => Number.isFinite(s.share) && s.share > 0)
+  && SEGS.every(s => s.parts.every(q => Number.isFinite(q.len) && q.len > 0))
+  && Math.abs(acc - 1) < 1e-6;
+
+/* ---- рендер ---- */
+const scrub = document.getElementById('scrub');
+const tip = document.getElementById('tip');
+
+// показуємо перші `len` пікселів шматка; пропуск трохи довший за сам шматок
+// нульовий штрих із round-cap малює крапку — тому ховаємо шматок повністю
+const reveal = (el, len, own) => {
+  if(!Number.isFinite(len)) return showAll();
+  el.style.visibility = len > 0.5 ? 'visible' : 'hidden';
+  el.style.strokeDasharray = len + ' ' + (own + 1);
+};
+const clamp = (v, lo, hi) => v < lo ? lo : v > hi ? hi : v;
+
+// аварійний режим: малюємо все повністю, повзунок просто нічого не робить
+function showAll(){
+  for(const el of [leftP, ...SEGS.flatMap(s => s.parts.map(q => q.el))]){
+    el.style.visibility = 'visible';
+    el.style.strokeDasharray = 'none';
+  }
+  for(const s of SEGS) if(s.cls) s.g.classList.add('on');
+}
+
+function render(){
+  if(!SANE) return showAll();
+  const p = scrub.value / 1000;
+
+  const lp = clamp01(p / SPLIT);
+  reveal(leftP, lenAtX(leftM, leftM.x0 + lp*(leftM.x1 - leftM.x0)), leftM.total);
+
+  const rp = clamp01((p - SPLIT) / (1 - SPLIT));
+  let len = 0;
+  for(const s of SEGS){
+    const local = clamp01((rp - s.p0) / s.share);
+    if(s.kind === 'fig'){
+      len += local * s.m.total;
+      // танець/тремтіння вмикаємо, коли фігуру домальовано (анімація — у CSS,
+      // не в rAF: працює навіть там, де таймери приспані)
+      s.g.classList.toggle('on', local > 0.99);
+    } else {
+      len += lenAtX(s.m, s.m.x0 + local*(s.m.x1 - s.m.x0));
+    }
+    for(const q of s.parts) reveal(q.el, clamp(len - q.start, 0, q.len), q.len);
+  }
+}
+
+/* ---- підказка: 2 с без руху — з'являється, будь-який рух — зникає ---- */
+let idle;
+function armTip(){
+  clearTimeout(idle);
+  idle = setTimeout(() => {
+    const w = scrub.clientWidth - 36;             // мінус ширина повзунка
+    tip.style.left = (18 + w * scrub.value / 1000) + 'px';
+    tip.classList.add('show');
+  }, 2000);
+}
+
+scrub.addEventListener('input', () => {
+  tip.classList.remove('show');
+  armTip();
+  render();
+});
+render();
+armTip();
+
+/* ---- звіт про те, що насправді сталося на цьому пристрої ---- */
+const diag = document.getElementById('diag');
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const nodes = document.querySelectorAll('#right path').length;
+diag.className = 'diag' + (SANE && nodes === 11 ? ' ok' : '');
+diag.textContent = 'JS ✓ · шматків ' + nodes + '/11 · міри ' + (SANE ? '✓' : '✗')
+  + ' · зменшення руху ' + (reduce ? 'УВІМКНЕНО' : 'вимкнено');
+</script>
+</body>
+</html>
